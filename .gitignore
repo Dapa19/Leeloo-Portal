@@ -1,0 +1,13 @@
+node_modules/
+dist/
+server/src/generated/
+.env
+.env.*
+!.env.example
+uploads/
+uploads-test/
+coverage/
+*.db
+*.db-journal
+*.tsbuildinfo
+.DS_Store

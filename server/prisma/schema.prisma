@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum ServiceType {
+  GRAPHIC_DESIGN
+  BRANDING
+  SOCIAL_MEDIA_DESIGN
+  VIDEO_EDITING
+  WEBSITE_DEVELOPMENT
+  OTHER
+}
+
+enum DeliverableStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  IN_REVIEW
+  REVISION_REQUESTED
+  APPROVED
+  DELIVERED
+}
+
+enum VersionReviewStatus {
+  SUBMITTED
+  REVISION_REQUESTED
+  APPROVED
+}
+
+enum FileKind {
+  DESIGN
+  FINAL
+}
+
+enum ActivityType {
+  PROJECT_CREATED
+  DESIGN_UPLOADED
+  REVISION_REQUESTED
+  COMMENT_ADDED
+  VERSION_APPROVED
+  FINAL_DELIVERED
+  PROJECT_UPDATED
+}
+
+model User {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  passwordHash String
+  role Role @default(CLIENT)
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions Session[]
+  memberships ProjectMember[]
+  projectsCreated Project[] @relation("ProjectCreator")
+  versionsUploaded DeliverableVersion[]
+  comments Comment[]
+  approvals Approval[]
+  activities ActivityLog[]
+  deliveredFiles FileAsset[] @relation("FileUploader")
+  @@index([role, active])
+}
+
+model Session {
+  id String @id @default(uuid())
+  tokenHash String @unique
+  csrfToken String
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model Project {
+  id String @id @default(uuid())
+  name String
+  description String @default("")
+  serviceType ServiceType
+  status ProjectStatus @default(ACTIVE)
+  startDate DateTime
+  deadline DateTime
+  internalNotes String?
+  archivedAt DateTime?
+  creatorId String
+  creator User @relation("ProjectCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  members ProjectMember[]
+  deliverables Deliverable[]
+  activities ActivityLog[]
+  files FileAsset[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, deadline])
+  @@index([creatorId])
+}
+
+model ProjectMember {
+  projectId String
+  userId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+  @@id([projectId, userId])
+  @@index([userId])
+}
+
+model Deliverable {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title String
+  description String @default("")
+  type String @default("Design")
+  status DeliverableStatus @default(NOT_STARTED)
+  deadline DateTime?
+  currentVersionId String? @unique
+  currentVersion DeliverableVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  versions DeliverableVersion[] @relation("AllVersions")
+  comments Comment[]
+  approvals Approval[]
+  files FileAsset[]
+  activities ActivityLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([projectId, status])
+}
+
+model DeliverableVersion {
+  id String @id @default(uuid())
+  deliverableId String
+  deliverable Deliverable @relation("AllVersions", fields: [deliverableId], references: [id], onDelete: Cascade)
+  currentFor Deliverable? @relation("CurrentVersion")
+  versionNumber Int
+  notes String?
+  reviewStatus VersionReviewStatus @default(SUBMITTED)
+  uploadedById String
+  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  file FileAsset?
+  comments Comment[]
+  approvals Approval[]
+  createdAt DateTime @default(now())
+  @@unique([deliverableId, versionNumber])
+  @@index([deliverableId, createdAt])
+}
+
+model FileAsset {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliverableId String
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  versionId String? @unique
+  version DeliverableVersion? @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  kind FileKind
+  storageKey String @unique
+  originalName String
+  mimeType String
+  size Int
+  uploadedById String
+  uploadedBy User @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@index([projectId, kind, createdAt])
+  @@index([deliverableId, kind])
+}
+
+model Comment {
+  id String @id @default(uuid())
+  deliverableId String
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  versionId String?
+  version DeliverableVersion? @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  message String
+  revisionRequest Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([deliverableId, createdAt])
+  @@index([versionId, createdAt])
+}
+
+model Approval {
+  id String @id @default(uuid())
+  deliverableId String
+  deliverable Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  versionId String
+  version DeliverableVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  approverId String
+  approver User @relation(fields: [approverId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([versionId, approverId])
+  @@index([deliverableId, createdAt])
+}
+
+model ActivityLog {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliverableId String?
+  deliverable Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  actorId String?
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  type ActivityType
+  message String
+  createdAt DateTime @default(now())
+  @@index([projectId, createdAt])
+  @@index([createdAt])
+}
