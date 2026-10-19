@@ -46,7 +46,7 @@ The API stores opaque session IDs as hashes in SQLite. The browser receives only
    npm run dev
    ```
 
-   The client is at `http://localhost:5173`; the API is at `http://localhost:4000`.
+   The agency portal is at `http://localhost:5173/agency/login`; the client portal is at `http://localhost:5173/client/login`; the API is at `http://localhost:4000`. The site root opens the agency sign-in, which links to client sign-in.
 
 The demo seed refuses to run when `NODE_ENV=production`. It is never run automatically.
 

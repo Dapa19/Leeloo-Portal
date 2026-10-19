@@ -71,9 +71,10 @@ const upload = multer({
 });
 
 api.post('/auth/login', authLimiter, asyncRoute(async (req, res) => {
-  const { email, password } = parse(loginSchema, req.body);
+  const { email, password, portal } = parse(loginSchema, req.body);
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
-  if (!user?.active || !(await bcrypt.compare(password, user.passwordHash))) fail(401, 'Email or password is incorrect.');
+  const portalMatches = !portal || (portal === 'agency' ? user?.role === Role.ADMIN : user?.role === Role.CLIENT);
+  if (!user?.active || !(await bcrypt.compare(password, user.passwordHash)) || !portalMatches) fail(401, 'Email or password is incorrect.');
   const csrfToken = await createSession(user.id, res);
   res.json(ok({ user: userView(user), csrfToken }));
 }));

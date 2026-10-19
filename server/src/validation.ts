@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const loginSchema = z.object({ email: z.string().email().max(254), password: z.string().min(1).max(200) });
+export const loginSchema = z.object({ email: z.string().email().max(254), password: z.string().min(1).max(200), portal: z.enum(['agency', 'client']).optional() });
 export const projectSchema = z.object({
   name: z.string().trim().min(2).max(120), clientId: z.string().uuid(), description: z.string().max(5000).default(''),
   serviceType: z.enum(['GRAPHIC_DESIGN', 'BRANDING', 'SOCIAL_MEDIA_DESIGN', 'VIDEO_EDITING', 'WEBSITE_DEVELOPMENT', 'OTHER']),

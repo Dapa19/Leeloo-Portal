@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { api, json, setCsrfToken } from './api';
 import type { User } from './types';
 
-interface AuthValue { user: User | null; loading: boolean; login: (email: string, password: string) => Promise<void>; logout: () => Promise<void>; }
+interface AuthValue { user: User | null; loading: boolean; login: (email: string, password: string, portal: 'agency' | 'client') => Promise<void>; logout: () => Promise<void>; }
 const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -13,8 +13,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   const value = useMemo<AuthValue>(() => ({
     user, loading,
-    async login(email, password) {
-      const data = await api<{ user: User; csrfToken: string }>('/auth/login', json('POST', { email, password }));
+    async login(email, password, portal) {
+      const data = await api<{ user: User; csrfToken: string }>('/auth/login', json('POST', { email, password, portal }));
       setCsrfToken(data.csrfToken); setUser(data.user);
     },
     async logout() { try { await api('/auth/logout', json('POST', {})); } finally { setCsrfToken(''); setUser(null); } },
